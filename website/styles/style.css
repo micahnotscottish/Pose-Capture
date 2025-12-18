@@ -1,2 +1,2 @@
 body { background: #111; color: white; text-align: center; }
-video { width: 90vw; border: 2px solid white; }
+video { width: auto; border: 2px solid white; transform: scaleX(-1); height: 70vh; }

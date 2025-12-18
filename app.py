@@ -3,7 +3,7 @@ from flask_app import app
 from cloudflared import start_cloudflared
 from yolo_loop import run_yolo_loop
 from config import FLASK_PORT
-
+from tests import pygame_phone_loop
 
 if __name__ == "__main__":
     threading.Thread(
@@ -18,6 +18,7 @@ if __name__ == "__main__":
     cloudflared_proc, public_url = start_cloudflared()
 
     try:
-        run_yolo_loop()
+        #run_yolo_loop()
+        pygame_phone_loop.run_pygame_loop()
     finally:
         cloudflared_proc.terminate()
