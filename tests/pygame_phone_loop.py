@@ -16,6 +16,10 @@ def run_pygame_loop():
         max_w = win_w 
         max_h = 1080
         mirror = True
+        # smoothing parameters
+        smoothing_alpha = 0.5  # higher = follow new positions more closely
+        conf_threshold = 0.5
+        smoothed_person = None
         
         model = YOLO(YOLO_MODEL_PATH)
 
@@ -98,7 +102,7 @@ def run_pygame_loop():
             screen.fill((0, 255, 0))
 
             # Blit image at requested position
-            #screen.blit(frame_surface, (img_x, img_y))
+            screen.blit(frame_surface, (img_x, img_y))
 
             # Draw keypoints (offset by image position)
             if results and len(results) > 0 and getattr(results[0], 'keypoints', None) is not None:
@@ -110,7 +114,19 @@ def run_pygame_loop():
                     person = xy[0]
                     person_conf = conf[0]
 
-                    draw_character(screen, img_x, img_y, person, person_conf, sprites)
+                    # Initialize smoothing buffer if needed
+                    if smoothed_person is None or smoothed_person.shape != person.shape:
+                        smoothed_person = person.copy()
+                    else:
+                        # Exponential smoothing per keypoint (only update when confidence is high)
+                        for i in range(person.shape[0]):
+                            if person_conf[i] >= conf_threshold:
+                                smoothed_person[i] = (
+                                    smoothing_alpha * person[i]
+                                    + (1.0 - smoothing_alpha) * smoothed_person[i]
+                                )
+
+                    draw_character(screen, img_x, img_y, smoothed_person, person_conf, sprites)
 
             flask_app.processing = False
             pygame.display.flip()
