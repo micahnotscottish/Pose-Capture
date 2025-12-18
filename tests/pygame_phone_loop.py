@@ -20,6 +20,7 @@ def run_pygame_loop():
         smoothing_alpha = 0.5  # higher = follow new positions more closely
         conf_threshold = 0.5
         smoothed_person = None
+        smoothed_people = None
         
         model = YOLO(YOLO_MODEL_PATH)
 
@@ -102,7 +103,7 @@ def run_pygame_loop():
             screen.fill((0, 255, 0))
 
             # Blit image at requested position
-            screen.blit(frame_surface, (img_x, img_y))
+            #screen.blit(frame_surface, (img_x, img_y))
 
             # Draw keypoints (offset by image position)
             if results and len(results) > 0 and getattr(results[0], 'keypoints', None) is not None:
@@ -110,23 +111,42 @@ def run_pygame_loop():
                 xy = kpts.xy.cpu().numpy()      # (people, num_kpts, 2)
                 conf = kpts.conf.cpu().numpy()  # (people, num_kpts)
 
-                if xy.size > 0:
-                    person = xy[0]
-                    person_conf = conf[0]
+                num_people = xy.shape[0]
 
-                    # Initialize smoothing buffer if needed
-                    if smoothed_person is None or smoothed_person.shape != person.shape:
-                        smoothed_person = person.copy()
-                    else:
-                        # Exponential smoothing per keypoint (only update when confidence is high)
-                        for i in range(person.shape[0]):
-                            if person_conf[i] >= conf_threshold:
-                                smoothed_person[i] = (
-                                    smoothing_alpha * person[i]
-                                    + (1.0 - smoothing_alpha) * smoothed_person[i]
-                                )
+                # Initialize smoothing storage ONCE
+                if smoothed_people is None:
+                    smoothed_people = []
 
-                    draw_character(screen, img_x, img_y, smoothed_person, person_conf, sprites)
+                # Ensure buffer count matches detected people
+                while len(smoothed_people) < num_people:
+                    smoothed_people.append(xy[len(smoothed_people)].copy())
+
+                if len(smoothed_people) > num_people:
+                    smoothed_people = smoothed_people[:num_people]
+
+                # Draw each detected person
+                for p in range(num_people):
+                    person = xy[p]
+                    person_conf = conf[p]
+                    smoothed_person = smoothed_people[p]
+
+                    # Exponential smoothing per keypoint
+                    for i in range(person.shape[0]):
+                        if person_conf[i] >= conf_threshold:
+                            smoothed_person[i] = (
+                                smoothing_alpha * person[i]
+                                + (1.0 - smoothing_alpha) * smoothed_person[i]
+                            )
+
+                    # Draw this character
+                    draw_character(
+                        screen,
+                        img_x,
+                        img_y,
+                        smoothed_person,
+                        person_conf,
+                        sprites
+                    )
 
             flask_app.processing = False
             pygame.display.flip()
@@ -136,10 +156,7 @@ def run_pygame_loop():
         
 
 def draw_character(screen, img_x, img_y, person, person_conf, sprites):
-
-
     
-
     # Draw sprite from left elbow to left wrist
     # YOLOv8 pose indices: left elbow = 7, left wrist = 9
     draw_from_to(screen, img_x, img_y, person, person_conf, sprites["left_forearm"], 7, 9)
