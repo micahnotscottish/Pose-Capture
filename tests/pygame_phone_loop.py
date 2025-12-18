@@ -6,38 +6,23 @@ import pygame
 import numpy as np
 
 
-def run_pygame_loop(
-        model_path: str = None,
-        window_size: tuple = (1000, 1000),
-        image_pos: tuple = (0, 0),
-        image_max_size: tuple = (1920, 2000),
-        mirror: bool = True,
-    ):
-        """Display frames from `flask_app.latest_frame` in a pygame window.
+def run_pygame_loop():
+        win_w = 1920
+        win_h = 1080
+        img_x = 0
+        img_y = 0
+        max_w = win_w 
+        max_h = 1080
+        mirror = True
 
-        Parameters:
-        - model_path: path to YOLO model (defaults to `YOLO_MODEL_PATH`).
-        - window_size: (width, height) of pygame window.
-        - image_pos: (x, y) top-left position within window where the image should be placed.
-        - image_max_size: maximum (width, height) reserved for the image; the frame will be
-          scaled to fit this area while preserving aspect ratio.
-        - mirror: if True, flip the image horizontally before running detection.
-
-        Keypoints are drawn in the same coordinate space as the displayed (resized) image,
-        and offset by `image_pos` so circles line up with the image location.
-        """
-
-        model_path = model_path or YOLO_MODEL_PATH
-        model = YOLO(model_path)
+        model = YOLO(YOLO_MODEL_PATH)
 
         pygame.init()
-        WIN_W, WIN_H = window_size
-        screen = pygame.display.set_mode((WIN_W, WIN_H), pygame.RESIZABLE)
+        screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
         pygame.display.set_caption("YOLOv8 Pose - All Keypoints")
         clock = pygame.time.Clock()
 
-        img_x, img_y = image_pos
-        max_w, max_h = image_max_size
+        
 
         running = True
         while running:
@@ -57,17 +42,24 @@ def run_pygame_loop(
                 clock.tick(30)
                 continue
 
-            # Compute scale to fit the image into image_max_size while preserving aspect ratio
+            # Get current window size (if user resized)
+            win_w, win_h = screen.get_size()
+
+            # Scale image to fit width
             h, w = frame.shape[:2]
-            scale = min(max_w / w, max_h / h)
-            disp_w = max(1, int(round(w * scale)))
+            scale = win_w / w
+            disp_w = win_w
             disp_h = max(1, int(round(h * scale)))
 
-            # Resize frame to display size
-            resized = cv2.resize(frame, (disp_w, disp_h))
+            # Compute top-left corner to center vertically
+            img_x = 0
+            img_y = max(0, (win_h - disp_h) // 2)
 
+            # Resize frame
+            resized = cv2.resize(frame, (disp_w, disp_h))
             if mirror:
                 resized = cv2.flip(resized, 1)
+
 
             # Run pose detection on resized image so keypoints match display coords
             results = model(resized, verbose=False)
@@ -82,7 +74,7 @@ def run_pygame_loop(
             screen.fill((0, 0, 0))
 
             # Blit image at requested position
-            screen.blit(frame_surface, (img_x, img_y))
+            #screen.blit(frame_surface, (img_x, img_y))
 
             # Draw keypoints (offset by image position)
             if results and len(results) > 0 and getattr(results[0], 'keypoints', None) is not None:
