@@ -10,7 +10,7 @@ import numpy as np
 def run_pygame_loop():
         
         win_w = 1920
-        win_h = 1080
+        win_h = 1200
         img_x = 0
         img_y = 0
         max_w = win_w 
@@ -30,17 +30,18 @@ def run_pygame_loop():
         clock = pygame.time.Clock()
 
         # Load sprite (do this once outside loop ideally)
+        background_image = pygame.image.load("sprites/background.png").convert_alpha()
         sprite_paths = {
-            "head": "arm_sprite.png",
-            "left_forearm": "arm_sprite.png",
-            "right_forearm": "arm_sprite.png",
-            "left_bicep": "arm_sprite.png",
-            "right_bicep": "arm_sprite.png",
-            "torso": "arm_sprite.png",
-            "left_thigh": "arm_sprite.png",
-            "right_thigh": "arm_sprite.png",
-            "left_shin": "arm_sprite.png",
-            "right_shin": "arm_sprite.png",
+            "head": "sprites/head.png",
+            "left_forearm": "sprites/limb.png",
+            "right_forearm": "sprites/limb.png",
+            "left_bicep": "sprites/limb.png",
+            "right_bicep": "sprites/limb.png",
+            "torso": "sprites/torso.png",
+            "left_thigh": "sprites/limb.png",
+            "right_thigh": "sprites/limb.png",
+            "left_shin": "sprites/limb.png",
+            "right_shin": "sprites/limb.png",
         }
         
         sprites = {}
@@ -49,8 +50,6 @@ def run_pygame_loop():
             sprites[name] = sprite
         
         
-        sprite = pygame.image.load("arm_sprite.png").convert_alpha()
-        sprite_w, sprite_h = sprite.get_size()
         
 
         running = True
@@ -104,6 +103,7 @@ def run_pygame_loop():
 
             # Blit image at requested position
             #screen.blit(frame_surface, (img_x, img_y))
+            screen.blit(background_image, (0, 0))
 
             # Draw keypoints (offset by image position)
             if results and len(results) > 0 and getattr(results[0], 'keypoints', None) is not None:
