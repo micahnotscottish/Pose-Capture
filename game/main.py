@@ -5,6 +5,7 @@ import flask_app
 import pygame
 import numpy as np
 from game import draw_character, draw_meteors, cam_configuration
+from game.cam_configuration import Configuration
 
 class myGame:
     def run_pygame_loop(self):
@@ -63,7 +64,8 @@ class myGame:
                 sample_frame = None
 
         # Show configuration UI and get scale/offsets
-        user_scale, user_offx, user_offy = cam_configuration.configuration(screen, sample_frame, initial_scale=1.0, initial_offx=0, initial_offy=0)
+        displayConf = Configuration()
+        user_scale, user_offx, user_offy = displayConf.configuration(screen, sample_frame, initial_scale=1.0, initial_offx=0, initial_offy=0)
         
         
         
