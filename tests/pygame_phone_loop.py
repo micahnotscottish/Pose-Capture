@@ -4,7 +4,7 @@ from config import YOLO_MODEL_PATH
 import flask_app
 import pygame
 import numpy as np
-from game import draw_character
+from game import draw_character, draw_meteors
 
 
 
@@ -17,6 +17,7 @@ def run_pygame_loop():
         max_w = win_w 
         max_h = 1080
         mirror = True
+        spawn_timer = 0
         # smoothing parameters
         smoothing_alpha = 1  # higher = follow new positions more closely
         conf_threshold = 0.5
@@ -56,7 +57,7 @@ def run_pygame_loop():
         
         
         
-
+        # --------- MAIN GAME LOOP -----------
         running = True
         while running:
             for event in pygame.event.get():
@@ -168,6 +169,14 @@ def run_pygame_loop():
                         person_conf,
                         sprites
                     )
+                    
+            spawn_timer += 1
+            if spawn_timer >= 20:
+                draw_meteors.spawn_meteor(screen.get_width())
+                spawn_timer = 0
+
+            # Update and draw meteors
+            draw_meteors.update_and_draw_meteors(screen)
 
             flask_app.processing = False
             pygame.display.flip()
