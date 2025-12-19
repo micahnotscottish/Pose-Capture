@@ -8,12 +8,13 @@ def start_cloudflared():
     print("Starting Cloudflare Tunnel...")
 
     proc = subprocess.Popen(
-        [CLOUDFLARED_PATH, "tunnel", "--url", f"http://localhost:{FLASK_PORT}"],
+        [CLOUDFLARED_PATH, "tunnel", "run", "nobread"],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True
     )
 
+    """"
     url_pattern = re.compile(r"https://[a-z0-9\-]+\.trycloudflare\.com")
 
     public_url = None
@@ -36,5 +37,6 @@ def start_cloudflared():
     img.save("qrcode/qr.png")
 
     print("QR code saved as qr.png")
-
+    """
+    public_url = None
     return proc, public_url
