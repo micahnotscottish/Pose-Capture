@@ -30,6 +30,10 @@ def run_pygame_loop():
         clock = pygame.time.Clock()
 
         # Load sprite (do this once outside loop ideally)
+        qrcode = pygame.image.load("qrcode/qr.png")
+        qr_rect = qrcode.get_rect(center=(win_w // 2, win_h // 2))
+        screen.blit(qrcode, qr_rect)
+
         background_image = pygame.image.load("sprites/background.png").convert_alpha()
         sprite_paths = {
             "head": "sprites/head.png",
@@ -130,13 +134,29 @@ def run_pygame_loop():
                     person_conf = conf[p]
                     smoothed_person = smoothed_people[p]
 
-                    # Exponential smoothing per keypoint
+                    # Exponential smoothing per keypoint with fallback for missing points.
+                    # Keep a copy of the previous smoothed positions so we can compute
+                    # the average translation of detected keypoints and apply that
+                    # translation to any undetected keypoints so they move with the body.
+                    prev_smoothed = smoothed_person.copy()
+                    detected_idxs = []
+
                     for i in range(person.shape[0]):
                         if person_conf[i] >= conf_threshold:
                             smoothed_person[i] = (
                                 smoothing_alpha * person[i]
-                                + (1.0 - smoothing_alpha) * smoothed_person[i]
+                                + (1.0 - smoothing_alpha) * prev_smoothed[i]
                             )
+                            detected_idxs.append(i)
+
+                    # If at least one keypoint was detected, compute average translation
+                    # and apply it to undetected keypoints so they follow the motion.
+                    if len(detected_idxs) > 0:
+                        deltas = smoothed_person[detected_idxs] - prev_smoothed[detected_idxs]
+                        avg_delta = np.mean(deltas, axis=0)
+                        for i in range(person.shape[0]):
+                            if person_conf[i] < conf_threshold:
+                                smoothed_person[i] = prev_smoothed[i] + avg_delta
 
                     # Draw this character
                     draw_character(
@@ -167,9 +187,10 @@ def draw_character(screen, img_x, img_y, person, person_conf, sprites):
     draw_from_to(screen, img_x, img_y, person, person_conf, sprites["right_thigh"], 12, 14)
     draw_from_to(screen, img_x, img_y, person, person_conf, sprites["left_shin"], 13, 15)
     draw_from_to(screen, img_x, img_y, person, person_conf, sprites["right_shin"], 14, 16)
-    draw_from_to(screen, img_x, img_y, person, person_conf, sprites["head"], 3, 4)
+    draw_head(screen, img_x, img_y, person, person_conf, sprites["head"])
     draw_torso(screen, img_x, img_y, person, person_conf, sprites["torso"])
     
+    """"
     # Draw all keypoints as circles
     for i in range(person.shape[0]):
         x, y = person[i]
@@ -178,6 +199,7 @@ def draw_character(screen, img_x, img_y, person, person_conf, sprites):
             draw_x = img_x + int(round(x))
             draw_y = img_y + int(round(y))
             pygame.draw.circle(screen, (255, 0, 0), (draw_x, draw_y), 8)
+    """
     
         
         
@@ -247,3 +269,49 @@ def draw_torso(screen, img_x, img_y, person, person_conf, sprite):
         rect = scaled_sprite.get_rect(center=(torso_center_x, torso_center_y))
         
         screen.blit(scaled_sprite, rect.topleft)
+        
+def get_head_center(person, conf, min_conf=0.5):
+    NOSE = 0
+    LEFT_EAR = 3
+    RIGHT_EAR = 4
+    LEFT_SHOULDER = 5
+    RIGHT_SHOULDER = 6
+
+    points = []
+
+    if conf[NOSE] > min_conf:
+        points.append(person[NOSE])
+
+    if conf[LEFT_EAR] > min_conf:
+        points.append(person[LEFT_EAR])
+
+    if conf[RIGHT_EAR] > min_conf:
+        points.append(person[RIGHT_EAR])
+
+    # Fallback to shoulders (estimate head above them)
+    if not points and conf[LEFT_SHOULDER] > min_conf and conf[RIGHT_SHOULDER] > min_conf:
+        sx = (person[LEFT_SHOULDER][0] + person[RIGHT_SHOULDER][0]) / 2
+        sy = (person[LEFT_SHOULDER][1] + person[RIGHT_SHOULDER][1]) / 2
+        return sx, sy - 40  # vertical offset guess
+
+    if not points:
+        return None
+
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    return sum(xs) / len(xs), sum(ys) / len(ys)
+
+
+
+def draw_head(screen, img_x, img_y, person, conf, head_sprite):
+    center = get_head_center(person, conf)
+    if center is None:
+        return
+
+    cx, cy = center
+
+    rect = head_sprite.get_rect()
+    rect.center = (img_x + int(cx), img_y + int(cy))
+    screen.blit(head_sprite, rect.topleft)
+
+
