@@ -4,7 +4,7 @@ import cv2
 
 
 class Configuration:
-    def __init__(self, screen, sample_bgr=None, initial_scale=1.0, initial_offx=0, initial_offy=0):
+    def __init__(self, screen, initial_scale=1.0, initial_offx=0, initial_offy=0):
         """Initialize configuration UI state. Call `configuration()` to run the UI loop.
 
         screen: pygame display surface
@@ -12,7 +12,6 @@ class Configuration:
         initial_scale/offx/offy: initial values shown by sliders
         """
         self.screen = screen
-        self.sample_bgr = sample_bgr
         self.initial_scale = initial_scale
         self.initial_offx = initial_offx
         self.initial_offy = initial_offy
