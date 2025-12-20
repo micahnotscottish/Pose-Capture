@@ -2,7 +2,41 @@ import pygame
 import flask_app
 import cv2
 
+
 class Configuration:
+    def __init__(self, screen, sample_bgr=None, initial_scale=1.0, initial_offx=0, initial_offy=0):
+        """Initialize configuration UI state. Call `configuration()` to run the UI loop.
+
+        screen: pygame display surface
+        sample_bgr: unused placeholder kept for compatibility
+        initial_scale/offx/offy: initial values shown by sliders
+        """
+        self.screen = screen
+        self.sample_bgr = sample_bgr
+        self.initial_scale = initial_scale
+        self.initial_offx = initial_offx
+        self.initial_offy = initial_offy
+
+        self.clock = pygame.time.Clock()
+        self.win_w, self.win_h = self.screen.get_size()
+
+        # preview surface will be updated each loop from a live frame if available
+        self.preview_surf = None
+        self.ph = self.pw = 0
+
+        # slider state: t in 0..1 maps to scale SCALE_MIN..SCALE_MAX, offx/offy -range..range
+        self.SCALE_MIN = 0.2
+        self.SCALE_MAX = 3.0
+        self.t_scale = max(0.0, min(1.0, (self.initial_scale - self.SCALE_MIN) / (self.SCALE_MAX - self.SCALE_MIN)))
+        self.max_offx = self.win_w // 2
+        self.max_offy = self.win_h // 2
+        self.t_offx = (self.initial_offx + self.max_offx) / (2 * self.max_offx) if self.max_offx else 0.5
+        self.t_offy = (self.initial_offy + self.max_offy) / (2 * self.max_offy) if self.max_offy else 0.5
+
+        self.dragging = None
+        self.running = True
+        self.font = pygame.font.SysFont(None, 28)
+
     def _draw_slider(self, surface, rect, t, label):
         # rect: (x,y,w,h), t: 0..1
         x, y, w, h = rect
@@ -16,134 +50,130 @@ class Configuration:
         txt = font.render(f"{label}: {t:.2f}", True, (255, 255, 255))
         surface.blit(txt, (x, y - 22))
 
+    def _get_slider_rects(self):
+        s1 = (50, self.win_h - 200, self.win_w - 100, 24)
+        s2 = (50, self.win_h - 160, self.win_w - 100, 24)
+        s3 = (50, self.win_h - 120, self.win_w - 100, 24)
+        return s1, s2, s3
 
-    def configuration(self, screen, sample_bgr, initial_scale=1.0, initial_offx=0, initial_offy=0):
-        """Show sliders to configure scale and offsets. Returns (scale, offx, offy).
+    def _map_t_values(self):
+        scale = self.SCALE_MIN + self.t_scale * (self.SCALE_MAX - self.SCALE_MIN)
+        offx = int(round(self.t_offx * 2 * self.max_offx - self.max_offx))
+        offy = int(round(self.t_offy * 2 * self.max_offy - self.max_offy))
+        return scale, offx, offy
 
-        sample_bgr: OpenCV BGR image to preview.
-        """
-        clock = pygame.time.Clock()
-        win_w, win_h = screen.get_size()
+    def _update_preview(self):
+        live = None
+        try:
+            if flask_app.latest_frame is not None:
+                live = flask_app.latest_frame.copy()
+        except Exception:
+            live = None
 
-        # preview surface will be updated each loop from a live frame if available
-        preview_surf = None
-        ph, pw = 0, 0
+        if live is not None:
+            try:
+                preview = cv2.cvtColor(live, cv2.COLOR_BGR2RGB)
+                self.ph, self.pw = preview.shape[:2]
+                self.preview_surf = pygame.image.frombuffer(preview.tobytes(), (self.pw, self.ph), 'RGB')
+            except Exception:
+                self.preview_surf = None
 
-        # slider state: t in 0..1 maps to scale SCALE_MIN..SCALE_MAX, offx/offy -range..range
-        SCALE_MIN = 0.2
-        SCALE_MAX = 3.0
-        t_scale = max(0.0, min(1.0, (initial_scale - SCALE_MIN) / (SCALE_MAX - SCALE_MIN)))
-        max_offx = win_w // 2
-        max_offy = win_h // 2
-        t_offx = (initial_offx + max_offx) / (2 * max_offx) if max_offx else 0.5
-        t_offy = (initial_offy + max_offy) / (2 * max_offy) if max_offy else 0.5
+    def _draw_preview_and_ui(self):
+        self.screen.fill((30, 30, 30))
+        # preview centered (if available) and transformed live according to sliders
+        if self.preview_surf is not None and self.pw > 0 and self.ph > 0:
+            # map t_scale to real scale
+            scale_val = self.SCALE_MIN + self.t_scale * (self.SCALE_MAX - self.SCALE_MIN)
 
-        dragging = None
-        running = True
-        font = pygame.font.SysFont(None, 28)
+            # compute a base fit scale so the preview fits comfortably in the UI
+            max_preview_w = int(self.win_w * 0.8)
+            max_preview_h = int(self.win_h * 0.6)
+            base_fit = min(max_preview_w / float(self.pw), max_preview_h / float(self.ph))
 
-        while running:
+            final_w = max(1, int(round(self.pw * base_fit * scale_val)))
+            final_h = max(1, int(round(self.ph * base_fit * scale_val)))
+
+            scaled = pygame.transform.smoothscale(self.preview_surf, (final_w, final_h))
+
+            # compute offsets in pixels from t_offx/t_offy
+            max_offx_preview = self.win_w // 2
+            max_offy_preview = self.win_h // 2
+            offx_px = int(round(self.t_offx * 2 * max_offx_preview - max_offx_preview))
+            offy_px = int(round(self.t_offy * 2 * max_offy_preview - max_offy_preview))
+
+            pv_x = (self.win_w // 2 - final_w // 2) + offx_px
+            pv_y = (self.win_h // 2 - final_h // 2 - 60) + offy_px
+            self.screen.blit(scaled, (pv_x, pv_y))
+        else:
+            # placeholder box
+            placeholder = pygame.Rect(self.win_w // 2 - 320, self.win_h // 2 - 240 - 60, 640, 480)
+            pygame.draw.rect(self.screen, (50, 50, 50), placeholder)
+            no_txt = pygame.font.SysFont(None, 24).render('Waiting for camera...', True, (200, 200, 200))
+            self.screen.blit(no_txt, (placeholder.x + 12, placeholder.y + 12))
+
+        s1, s2, s3 = self._get_slider_rects()
+        self._draw_slider(self.screen, s1, self.t_scale, 'Scale')
+        self._draw_slider(self.screen, s2, self.t_offx, 'Offset X')
+        self._draw_slider(self.screen, s3, self.t_offy, 'Offset Y')
+
+        # Configure button
+        cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
+        pygame.draw.rect(self.screen, (70, 140, 70), cfg_rect)
+        txt = self.font.render('Configure', True, (255, 255, 255))
+        txt_rect = txt.get_rect(center=cfg_rect.center)
+        self.screen.blit(txt, txt_rect)
+
+        return cfg_rect
+
+    def _handle_event(self, ev, cfg_rect):
+        if ev.type == pygame.QUIT:
+            return 'quit'
+        elif ev.type == pygame.MOUSEBUTTONDOWN:
+            mx, my = ev.pos
+            s1, s2, s3 = self._get_slider_rects()
+            if pygame.Rect(*s1).collidepoint(mx, my):
+                self.dragging = ('scale', s1)
+            elif pygame.Rect(*s2).collidepoint(mx, my):
+                self.dragging = ('offx', s2)
+            elif pygame.Rect(*s3).collidepoint(mx, my):
+                self.dragging = ('offy', s3)
+            else:
+                if cfg_rect.collidepoint(mx, my):
+                    return 'configure'
+        elif ev.type == pygame.MOUSEBUTTONUP:
+            self.dragging = None
+        elif ev.type == pygame.MOUSEMOTION and self.dragging is not None:
+            _, rect = self.dragging
+            rx, ry, rw, rh = rect
+            mx = ev.pos[0]
+            t = (mx - rx) / float(max(1, rw))
+            t = max(0.0, min(1.0, t))
+            if self.dragging[0] == 'scale':
+                self.t_scale = t
+            elif self.dragging[0] == 'offx':
+                self.t_offx = t
+            elif self.dragging[0] == 'offy':
+                self.t_offy = t
+
+        return None
+
+    def configuration(self):
+        """Run the configuration UI loop. Returns (scale, offx, offy)."""
+        while True:
+            cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
+
             for ev in pygame.event.get():
-                if ev.type == pygame.QUIT:
-                    return initial_scale, initial_offx, initial_offy
-                elif ev.type == pygame.MOUSEBUTTONDOWN:
-                    mx, my = ev.pos
-                    # slider areas
-                    s1 = (50, win_h - 200, win_w - 100, 24)
-                    s2 = (50, win_h - 160, win_w - 100, 24)
-                    s3 = (50, win_h - 120, win_w - 100, 24)
-                    if pygame.Rect(*s1).collidepoint(mx, my):
-                        dragging = ('scale', s1)
-                    elif pygame.Rect(*s2).collidepoint(mx, my):
-                        dragging = ('offx', s2)
-                    elif pygame.Rect(*s3).collidepoint(mx, my):
-                        dragging = ('offy', s3)
-                    else:
-                        # configure button
-                        cfg_rect = pygame.Rect(win_w // 2 - 80, win_h - 70, 160, 40)
-                        if cfg_rect.collidepoint(mx, my):
-                            # Map t values to real
-                            scale = SCALE_MIN + t_scale * (SCALE_MAX - SCALE_MIN)
-                            offx = int(round(t_offx * 2 * max_offx - max_offx))
-                            offy = int(round(t_offy * 2 * max_offy - max_offy))
-                            return scale, offx, offy
-                elif ev.type == pygame.MOUSEBUTTONUP:
-                    dragging = None
-                elif ev.type == pygame.MOUSEMOTION and dragging is not None:
-                    _, rect = dragging
-                    rx, ry, rw, rh = rect
-                    mx = ev.pos[0]
-                    t = (mx - rx) / float(max(1, rw))
-                    t = max(0.0, min(1.0, t))
-                    if dragging[0] == 'scale':
-                        t_scale = t
-                    elif dragging[0] == 'offx':
-                        t_offx = t
-                    elif dragging[0] == 'offy':
-                        t_offy = t
+                res = self._handle_event(ev, cfg_rect)
+                if res == 'quit':
+                    return self.initial_scale, self.initial_offx, self.initial_offy
+                if res == 'configure':
+                    return self._map_t_values()
 
             # update preview from latest live frame if available
-            live = None
-            try:
-                if flask_app.latest_frame is not None:
-                    live = flask_app.latest_frame.copy()
-            except Exception:
-                live = None
+            self._update_preview()
 
-            if live is not None:
-                try:
-                    preview = cv2.cvtColor(live, cv2.COLOR_BGR2RGB)
-                    ph, pw = preview.shape[:2]
-                    preview_surf = pygame.image.frombuffer(preview.tobytes(), (pw, ph), 'RGB')
-                except Exception:
-                    preview_surf = None
-
-            # draw UI
-            screen.fill((30, 30, 30))
-            # preview centered (if available) and transformed live according to sliders
-            if preview_surf is not None and pw > 0 and ph > 0:
-                # map t_scale to real scale
-                scale_val = SCALE_MIN + t_scale * (SCALE_MAX - SCALE_MIN)
-
-                # compute a base fit scale so the preview fits comfortably in the UI
-                max_preview_w = int(win_w * 0.8)
-                max_preview_h = int(win_h * 0.6)
-                base_fit = min(max_preview_w / float(pw), max_preview_h / float(ph))
-
-                final_w = max(1, int(round(pw * base_fit * scale_val)))
-                final_h = max(1, int(round(ph * base_fit * scale_val)))
-
-                scaled = pygame.transform.smoothscale(preview_surf, (final_w, final_h))
-
-                # compute offsets in pixels from t_offx/t_offy
-                max_offx_preview = win_w // 2
-                max_offy_preview = win_h // 2
-                offx_px = int(round(t_offx * 2 * max_offx_preview - max_offx_preview))
-                offy_px = int(round(t_offy * 2 * max_offy_preview - max_offy_preview))
-
-                pv_x = (win_w // 2 - final_w // 2) + offx_px
-                pv_y = (win_h // 2 - final_h // 2 - 60) + offy_px
-                screen.blit(scaled, (pv_x, pv_y))
-            else:
-                # placeholder box
-                placeholder = pygame.Rect(win_w // 2 - 320, win_h // 2 - 240 - 60, 640, 480)
-                pygame.draw.rect(screen, (50, 50, 50), placeholder)
-                no_txt = pygame.font.SysFont(None, 24).render('Waiting for camera...', True, (200, 200, 200))
-                screen.blit(no_txt, (placeholder.x + 12, placeholder.y + 12))
-
-            s1 = (50, win_h - 200, win_w - 100, 24)
-            s2 = (50, win_h - 160, win_w - 100, 24)
-            s3 = (50, win_h - 120, win_w - 100, 24)
-            self._draw_slider(screen, s1, t_scale, 'Scale')
-            self._draw_slider(screen, s2, t_offx, 'Offset X')
-            self._draw_slider(screen, s3, t_offy, 'Offset Y')
-
-            # Configure button
-            cfg_rect = pygame.Rect(win_w // 2 - 80, win_h - 70, 160, 40)
-            pygame.draw.rect(screen, (70, 140, 70), cfg_rect)
-            txt = font.render('Configure', True, (255, 255, 255))
-            txt_rect = txt.get_rect(center=cfg_rect.center)
-            screen.blit(txt, txt_rect)
+            # draw UI and get button rect
+            self._draw_preview_and_ui()
 
             pygame.display.flip()
-            clock.tick(30)
+            self.clock.tick(30)

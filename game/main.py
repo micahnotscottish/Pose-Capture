@@ -8,6 +8,11 @@ from game import draw_character, draw_meteors, cam_configuration
 from game.cam_configuration import Configuration
 
 class myGame:
+    
+    def __init__(self):
+        pass
+        
+    
     def run_pygame_loop(self):
         
         win_w = 1920
@@ -64,8 +69,8 @@ class myGame:
                 sample_frame = None
 
         # Show configuration UI and get scale/offsets
-        displayConf = Configuration()
-        user_scale, user_offx, user_offy = displayConf.configuration(screen, sample_frame, initial_scale=1.0, initial_offx=0, initial_offy=0)
+        displayConf = Configuration(screen, sample_frame, initial_scale=1.0, initial_offx=0, initial_offy=0)
+        user_scale, user_offx, user_offy = displayConf.configuration()
         
         
         
