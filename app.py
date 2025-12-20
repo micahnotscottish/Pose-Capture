@@ -3,7 +3,6 @@ from flask_app import app
 from cloudflared import start_cloudflared
 from yolo_loop import run_yolo_loop
 from config import FLASK_PORT
-from tests import pygame_phone_loop
 from game.main import myGame
 
 if __name__ == "__main__":

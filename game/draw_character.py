@@ -221,17 +221,17 @@ class CharacterDraw():
 
         points = []
 
-        if self.conf[NOSE] > self.min_conf:
+        if self.person_conf[NOSE] > self.min_conf:
             points.append(self.person[NOSE])
 
-        if self.conf[LEFT_EAR] > self.min_conf:
+        if self.person_conf[LEFT_EAR] > self.min_conf:
             points.append(self.person[LEFT_EAR])
 
-        if self.conf[RIGHT_EAR] > self.min_conf:
+        if self.person_conf[RIGHT_EAR] > self.min_conf:
             points.append(self.person[RIGHT_EAR])
 
         # Fallback to shoulders (estimate head above them)
-        if not points and self.conf[LEFT_SHOULDER] > self.min_conf and self.conf[RIGHT_SHOULDER] > self.min_conf:
+        if not points and self.person_conf[LEFT_SHOULDER] > self.min_conf and self.person_conf[RIGHT_SHOULDER] > self.min_conf:
             sx = (self.person[LEFT_SHOULDER][0] + self.person[RIGHT_SHOULDER][0]) / 2
             sy = (self.person[LEFT_SHOULDER][1] + self.person[RIGHT_SHOULDER][1]) / 2
             return sx, sy - 40  # vertical offset guess
@@ -246,8 +246,7 @@ class CharacterDraw():
 
 
     def draw_head(self, head_sprite):
-        #center = self.get_head_center()
-        center = None
+        center = self.get_head_center()
         if center is None:
             return
 

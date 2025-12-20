@@ -11,29 +11,24 @@ from game.draw_character import CharacterDraw
 class myGame:
     
     def __init__(self):
-        pass
-        
-    
-    def run_pygame_loop(self):
-        
-        win_w = 1920
-        win_h = 1200
-        mirror = True
-        spawn_timer = 0
+        self.win_w = 1920
+        self.win_h = 1200
+        self.mirror = True
+        self.spawn_timer = 0
   
-        model = YOLO(YOLO_MODEL_PATH)
+        self.model = YOLO(YOLO_MODEL_PATH)
 
         pygame.init()
-        screen = pygame.display.set_mode((win_w, win_h), pygame.RESIZABLE)
+        self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
         pygame.display.set_caption("YOLOv8 Pose - All Keypoints")
-        clock = pygame.time.Clock()
+        self.clock = pygame.time.Clock()
 
         # Load sprite (do this once outside loop ideally)
         qrcode = pygame.image.load("qrcode/qr.png")
-        qr_rect = qrcode.get_rect(center=(win_w // 2, win_h // 2))
-        screen.blit(qrcode, qr_rect)
+        qr_rect = qrcode.get_rect(center=(self.win_w // 2, self.win_h // 2))
+        self.screen.blit(qrcode, qr_rect)
 
-        background_image = pygame.image.load("sprites/background.png").convert_alpha()
+        self.background_image = pygame.image.load("sprites/background.png").convert_alpha()
         sprite_paths = {
             "head": "sprites/head.png",
             "left_forearm": "sprites/limb.png",
@@ -47,18 +42,22 @@ class myGame:
             "right_shin": "sprites/limb.png",
         }
         
-        sprites = {}
+        self.sprites = {}
         for name, path in sprite_paths.items():
             sprite = pygame.image.load(path).convert_alpha()  # preserve transparency
-            sprites[name] = sprite
+            self.sprites[name] = sprite
 
 
         # Show configuration UI and get scale/offsets
-        displayConf = Configuration(screen, initial_scale=1.0, initial_offx=0, initial_offy=0)
-        user_scale, user_offx, user_offy = displayConf.configuration()
+        self.displayConf = Configuration(self.screen, initial_scale=1.0, initial_offx=0, initial_offy=0)
+        self.user_scale, self.user_offx, self.user_offy = self.displayConf.configuration()
                 
 
-        draw_character = CharacterDraw(screen, model, user_offx, user_offy, user_scale, mirror, sprites)
+        self.draw_character = CharacterDraw(self.screen, self.model, self.user_offx, self.user_offy, self.user_scale, self.mirror, self.sprites)
+        pass
+        
+    
+    def run_pygame_loop(self):
         
         
         # --------- MAIN GAME LOOP -----------
@@ -70,26 +69,26 @@ class myGame:
 
 
             # Optional: clear background (fill with black)
-            screen.fill((0, 255, 0))
+            self.screen.fill((0, 255, 0))
 
             # Blit image at requested position
             #screen.blit(frame_surface, (img_x, img_y))
-            screen.blit(background_image, (0, 0))
+            self.screen.blit(self.background_image, (0, 0))
             
             
-            draw_character.draw_character()
+            self.draw_character.draw_character()
                     
-            spawn_timer += 1
-            if spawn_timer >= 20:
-                draw_meteors.spawn_meteor(screen.get_width())
-                spawn_timer = 0
+            self.spawn_timer += 1
+            if self.spawn_timer >= 20:
+                draw_meteors.spawn_meteor(self.screen.get_width())
+                self.spawn_timer = 0
 
             # Update and draw meteors
-            draw_meteors.update_and_draw_meteors(screen)
+            draw_meteors.update_and_draw_meteors(self.screen)
 
             flask_app.processing = False
             pygame.display.flip()
-            clock.tick(30)
+            self.clock.tick(30)
 
         pygame.quit()
         
