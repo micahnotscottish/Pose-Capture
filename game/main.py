@@ -80,7 +80,7 @@ class myGame:
             hitbox = self.draw_character.get_head_rect()
                     
             self.spawn_timer += 1
-            if self.spawn_timer >= 20:
+            if self.spawn_timer >= 40:
                 draw_meteors.spawn_meteor(self.screen.get_width())
                 self.spawn_timer = 0
 

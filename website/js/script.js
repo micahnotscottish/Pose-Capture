@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
         body: blob
       });
     }, "image/jpeg", 0.6);
-  }, 50);
+  }, 100);
 
   switchBtn.addEventListener("click", () => {
     facingMode = facingMode === "environment" ? "user" : "environment";

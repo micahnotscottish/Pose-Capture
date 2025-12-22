@@ -50,13 +50,13 @@ class CharacterDraw():
         self.draw_torso(self.sprites["torso"])
         
         # Debug: draw all keypoints as circles (disabled)
-        for i in (5, 6, 7, 8, 11, 12, 13, 14 ):
-            x, y = self.person[i]
-            c = self.person_conf[i]
-            if c > 0.5:
-                draw_x = self.img_x + int(round(x))
-                draw_y = self.img_y + int(round(y))
-                pygame.draw.circle(self.screen, (35, 111, 33), (draw_x, draw_y), 6)
+        #for i in (5, 6, 7, 8, 11, 12, 13, 14 ):
+        #    x, y = self.person[i]
+        #    c = self.person_conf[i]
+        #    if c > 0.5:
+        #        draw_x = self.img_x + int(round(x))
+        #        draw_y = self.img_y + int(round(y))
+        #        pygame.draw.circle(self.screen, (35, 111, 33), (draw_x, draw_y), 6)
         
     
     def get_pose(self):
@@ -239,7 +239,7 @@ class CharacterDraw():
             torso_height = max(1, int(abs(hip_mid_y - shoulder_mid_y)))
 
             # Scale sprite
-            scaled_sprite = pygame.transform.scale(sprite, (torso_width + torso_width * .2, torso_height + torso_height * .2))
+            scaled_sprite = pygame.transform.scale(sprite, (torso_width, torso_height))
 
             # Center of torso box
             center_x = self.img_x + int(round((lh_x + rh_x + ls_x + rs_x) / 4))
