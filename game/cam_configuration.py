@@ -136,6 +136,36 @@ class Configuration:
         self._draw_slider(self.screen, s4, self.t_crop_left, 'Crop Left')
         self._draw_slider(self.screen, s5, self.t_crop_right, 'Crop Right')
 
+
+        # --- Calibration Guide Box ---
+        rect_w, rect_h = 100, 175
+        rect_x = (self.screen.get_width() - rect_w) // 2
+        rect_y = (self.screen.get_height() - rect_h) // 2 + 150
+
+        # Draw red rectangle (outline)
+        pygame.draw.rect(
+            self.screen,
+            (255, 0, 0),
+            (rect_x, rect_y, rect_w, rect_h),
+            4  # border thickness
+        )
+
+        # Instruction text
+        font = pygame.font.SysFont(None, 32)
+        text = "Adjust settings until body fits within this region"
+
+        # Render multiline text
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            txt_surf = font.render(line, True, (255, 255, 255))
+            txt_rect = txt_surf.get_rect(
+                center=(self.screen.get_width() // 2, rect_y + rect_h + 20 + i * 30)
+            )
+            self.screen.blit(txt_surf, txt_rect)
+
+
+        
+        
         # Configure button
         cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
         pygame.draw.rect(self.screen, (70, 140, 70), cfg_rect)
