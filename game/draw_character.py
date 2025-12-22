@@ -4,7 +4,7 @@ import flask_app
 import cv2
 
 class CharacterDraw():
-    def __init__(self, screen, model, user_offx, user_offy, user_scale, mirror, sprites):
+    def __init__(self, screen, model, user_offx, user_offy, user_scale, crop_left, crop_right, mirror, sprites):
         self.screen = screen
         self.model = model
         self.disp_w = None
@@ -16,7 +16,7 @@ class CharacterDraw():
         self.person = None
         self.person_conf = None
         self.conf_threshold = 0.5
-        self.smoothing_alpha = 1  # higher = follow new positions more closely
+        self.smoothing_alpha = .5  # higher = follow new positions more closely
         self.person = None
         self.smoothed_people = None
         self.min_conf = .5
@@ -24,6 +24,9 @@ class CharacterDraw():
         self.user_offy = user_offy
         self.user_scale = user_scale
         self.conf = None
+        self.crop_left = crop_left
+        self.crop_right = crop_right
+        self.head_rect = None
         
         
     
@@ -47,13 +50,13 @@ class CharacterDraw():
         self.draw_torso(self.sprites["torso"])
         
         # Debug: draw all keypoints as circles (disabled)
-        # for i in range(self.person.shape[0]):
-        #     x, y = self.person[i]
-        #     c = self.person_conf[i]
-        #     if c > 0.5:
-        #         draw_x = self.img_x + int(round(x))
-        #         draw_y = self.img_y + int(round(y))
-        #         pygame.draw.circle(self.screen, (255, 0, 0), (draw_x, draw_y), 8)
+        for i in (5, 6, 7, 8, 11, 12, 13, 14 ):
+            x, y = self.person[i]
+            c = self.person_conf[i]
+            if c > 0.5:
+                draw_x = self.img_x + int(round(x))
+                draw_y = self.img_y + int(round(y))
+                pygame.draw.circle(self.screen, (35, 111, 33), (draw_x, draw_y), 6)
         
     
     def get_pose(self):
@@ -72,6 +75,14 @@ class CharacterDraw():
         # Use user-controlled uniform scale and offsets
         win_w, win_h = self.screen.get_size()
         h, w = frame.shape[:2]
+        
+        left_px  = int(self.crop_left  * w)
+        right_px = int(self.crop_right * w)
+
+        # Safety clamp (avoid empty / invalid frames)
+        if right_px - left_px > 10:
+            frame = frame[:, left_px:right_px]
+            
         self.disp_w = max(1, int(round(w * self.user_scale)))
         self.disp_h = max(1, int(round(h * self.user_scale)))
 
@@ -228,7 +239,7 @@ class CharacterDraw():
             torso_height = max(1, int(abs(hip_mid_y - shoulder_mid_y)))
 
             # Scale sprite
-            scaled_sprite = pygame.transform.scale(sprite, (torso_width, torso_height))
+            scaled_sprite = pygame.transform.scale(sprite, (torso_width + torso_width * .2, torso_height + torso_height * .2))
 
             # Center of torso box
             center_x = self.img_x + int(round((lh_x + rh_x + ls_x + rs_x) / 4))
@@ -278,6 +289,40 @@ class CharacterDraw():
 
         cx, cy = center
 
-        rect = head_sprite.get_rect()
-        rect.center = (self.img_x + int(cx), self.img_y + int(cy))
-        self.screen.blit(head_sprite, rect.topleft)
+        shoulder_width = self.get_shoulder_width()
+        if shoulder_width is None:
+            return  # don’t draw if we can’t size it properly
+
+        # 🔑 Head size relative to shoulders
+        head_size = int(shoulder_width * 1.5)  # tweak 1.0–1.4
+
+        head_sprite_scaled = pygame.transform.smoothscale(
+            head_sprite,
+            (head_size, head_size)
+        )
+
+        self.head_rect = head_sprite_scaled.get_rect()
+        self.head_rect.center = (
+            self.img_x + int(cx),
+            self.img_y + int(cy)
+        )
+
+        self.screen.blit(head_sprite_scaled, self.head_rect.topleft)
+
+
+    def get_head_rect(self):
+        return self.head_rect
+    
+    def get_shoulder_width(self):
+        LEFT_SHOULDER = 5
+        RIGHT_SHOULDER = 6
+
+        if (
+            self.person_conf[LEFT_SHOULDER] > self.min_conf and
+            self.person_conf[RIGHT_SHOULDER] > self.min_conf
+        ):
+            x1, _ = self.person[LEFT_SHOULDER]
+            x2, _ = self.person[RIGHT_SHOULDER]
+            return abs(x2 - x1)
+
+        return None

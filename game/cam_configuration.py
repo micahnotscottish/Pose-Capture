@@ -31,6 +31,9 @@ class Configuration:
         self.max_offy = self.win_h // 2
         self.t_offx = (self.initial_offx + self.max_offx) / (2 * self.max_offx) if self.max_offx else 0.5
         self.t_offy = (self.initial_offy + self.max_offy) / (2 * self.max_offy) if self.max_offy else 0.5
+        # crop values as normalized 0..1 of image width
+        self.t_crop_left = 0.0     # 0 = no crop
+        self.t_crop_right = 1.0    # 1 = no crop
 
         self.dragging = None
         self.running = True
@@ -50,16 +53,18 @@ class Configuration:
         surface.blit(txt, (x, y - 22))
 
     def _get_slider_rects(self):
-        s1 = (50, self.win_h - 200, self.win_w - 100, 24)
-        s2 = (50, self.win_h - 160, self.win_w - 100, 24)
-        s3 = (50, self.win_h - 120, self.win_w - 100, 24)
-        return s1, s2, s3
+        s1 = (50, self.win_h - 260, self.win_w - 100, 24)  # Scale
+        s2 = (50, self.win_h - 220, self.win_w - 100, 24)  # Offset X
+        s3 = (50, self.win_h - 180, self.win_w - 100, 24)  # Offset Y
+        s4 = (50, self.win_h - 140, self.win_w - 100, 24)  # Crop Left
+        s5 = (50, self.win_h - 100, self.win_w - 100, 24)  # Crop Right
+        return s1, s2, s3, s4, s5
 
     def _map_t_values(self):
         scale = self.SCALE_MIN + self.t_scale * (self.SCALE_MAX - self.SCALE_MIN)
         offx = int(round(self.t_offx * 2 * self.max_offx - self.max_offx))
         offy = int(round(self.t_offy * 2 * self.max_offy - self.max_offy))
-        return scale, offx, offy
+        return scale, offx, offy, self.t_crop_left, self.t_crop_right
 
     def _update_preview(self):
         live = None
@@ -71,9 +76,21 @@ class Configuration:
 
         if live is not None:
             try:
+                h, w = live.shape[:2]
+
+                # compute crop pixels
+                left_px = int(self.t_crop_left * w)
+                right_px = int(self.t_crop_right * w)
+
+                # safety clamp
+                if right_px - left_px > 10:
+                    live = live[:, left_px:right_px]
+
                 preview = cv2.cvtColor(live, cv2.COLOR_BGR2RGB)
                 self.ph, self.pw = preview.shape[:2]
-                self.preview_surf = pygame.image.frombuffer(preview.tobytes(), (self.pw, self.ph), 'RGB')
+                self.preview_surf = pygame.image.frombuffer(
+                    preview.tobytes(), (self.pw, self.ph), 'RGB'
+                )
             except Exception:
                 self.preview_surf = None
 
@@ -103,6 +120,7 @@ class Configuration:
             pv_x = (self.win_w // 2 - final_w // 2) + offx_px
             pv_y = (self.win_h // 2 - final_h // 2 - 60) + offy_px
             self.screen.blit(scaled, (pv_x, pv_y))
+        
         else:
             # placeholder box
             placeholder = pygame.Rect(self.win_w // 2 - 320, self.win_h // 2 - 240 - 60, 640, 480)
@@ -110,10 +128,13 @@ class Configuration:
             no_txt = pygame.font.SysFont(None, 24).render('Waiting for camera...', True, (200, 200, 200))
             self.screen.blit(no_txt, (placeholder.x + 12, placeholder.y + 12))
 
-        s1, s2, s3 = self._get_slider_rects()
+        s1, s2, s3, s4, s5 = self._get_slider_rects()
+
         self._draw_slider(self.screen, s1, self.t_scale, 'Scale')
         self._draw_slider(self.screen, s2, self.t_offx, 'Offset X')
         self._draw_slider(self.screen, s3, self.t_offy, 'Offset Y')
+        self._draw_slider(self.screen, s4, self.t_crop_left, 'Crop Left')
+        self._draw_slider(self.screen, s5, self.t_crop_right, 'Crop Right')
 
         # Configure button
         cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
@@ -129,13 +150,17 @@ class Configuration:
             return 'quit'
         elif ev.type == pygame.MOUSEBUTTONDOWN:
             mx, my = ev.pos
-            s1, s2, s3 = self._get_slider_rects()
+            s1, s2, s3, s4, s5= self._get_slider_rects()
             if pygame.Rect(*s1).collidepoint(mx, my):
                 self.dragging = ('scale', s1)
             elif pygame.Rect(*s2).collidepoint(mx, my):
                 self.dragging = ('offx', s2)
             elif pygame.Rect(*s3).collidepoint(mx, my):
                 self.dragging = ('offy', s3)
+            elif pygame.Rect(*s4).collidepoint(mx, my):
+                self.dragging = ('crop_left', s4)
+            elif pygame.Rect(*s5).collidepoint(mx, my):
+                self.dragging = ('crop_right', s5)
             else:
                 if cfg_rect.collidepoint(mx, my):
                     return 'configure'
@@ -153,6 +178,10 @@ class Configuration:
                 self.t_offx = t
             elif self.dragging[0] == 'offy':
                 self.t_offy = t
+            elif self.dragging[0] == 'crop_left':
+                self.t_crop_left = min(t, self.t_crop_right - 0.05)
+            elif self.dragging[0] == 'crop_right':
+                self.t_crop_right = max(t, self.t_crop_left + 0.05)
 
         return None
 
@@ -164,7 +193,7 @@ class Configuration:
             for ev in pygame.event.get():
                 res = self._handle_event(ev, cfg_rect)
                 if res == 'quit':
-                    return self.initial_scale, self.initial_offx, self.initial_offy
+                    return self.initial_scale, self.initial_offx, self.initial_offy, self.t_crop_left, self.t_crop_right
                 if res == 'configure':
                     return self._map_t_values()
 
@@ -175,4 +204,4 @@ class Configuration:
             self._draw_preview_and_ui()
 
             pygame.display.flip()
-            self.clock.tick(30)
+            self.clock.tick(60)

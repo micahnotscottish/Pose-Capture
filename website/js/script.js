@@ -1,9 +1,18 @@
 document.addEventListener("DOMContentLoaded", () => {
+
+  const PASSWORD = "letmein"; // <-- change this
+
+  const entered = prompt("Enter password to continue:");
+  if (entered !== PASSWORD) {
+    alert("Incorrect password.");
+    return; // ⛔ stop everything
+  }
+
   const video = document.getElementById("video");
   const switchBtn = document.getElementById("switchCam");
 
   let stream = null;
-  let facingMode = "environment"; // start on back camera
+  let facingMode = "environment";
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");
@@ -28,7 +37,7 @@ document.addEventListener("DOMContentLoaded", () => {
     .catch(err => alert(err));
   }
 
-  // Upload loop (unchanged behavior)
+  // Upload loop
   setInterval(() => {
     if (!video.videoWidth) return;
 
@@ -42,12 +51,10 @@ document.addEventListener("DOMContentLoaded", () => {
         body: blob
       });
     }, "image/jpeg", 0.6);
-  }, 100);
+  }, 50);
 
-  // Switch button
   switchBtn.addEventListener("click", () => {
-    facingMode =
-      facingMode === "environment" ? "user" : "environment";
+    facingMode = facingMode === "environment" ? "user" : "environment";
     startCamera();
   });
 

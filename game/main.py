@@ -12,7 +12,7 @@ class myGame:
     
     def __init__(self):
         self.win_w = 1920
-        self.win_h = 1200
+        self.win_h = 1080
         self.mirror = True
         self.spawn_timer = 0
   
@@ -31,15 +31,15 @@ class myGame:
         self.background_image = pygame.image.load("sprites/background.png").convert_alpha()
         sprite_paths = {
             "head": "sprites/head.png",
-            "left_forearm": "sprites/limb.png",
-            "right_forearm": "sprites/limb.png",
-            "left_bicep": "sprites/limb.png",
-            "right_bicep": "sprites/limb.png",
+            "left_forearm": "sprites/arm.png",
+            "right_forearm": "sprites/arm.png",
+            "left_bicep": "sprites/bicep.png",
+            "right_bicep": "sprites/bicep.png",
             "torso": "sprites/torso.png",
-            "left_thigh": "sprites/limb.png",
-            "right_thigh": "sprites/limb.png",
-            "left_shin": "sprites/limb.png",
-            "right_shin": "sprites/limb.png",
+            "left_thigh": "sprites/thigh.png",
+            "right_thigh": "sprites/thigh.png",
+            "left_shin": "sprites/shin.png",
+            "right_shin": "sprites/shin.png",
         }
         
         self.sprites = {}
@@ -50,10 +50,10 @@ class myGame:
 
         # Show configuration UI and get scale/offsets
         self.displayConf = Configuration(self.screen, initial_scale=1.0, initial_offx=0, initial_offy=0)
-        self.user_scale, self.user_offx, self.user_offy = self.displayConf.configuration()
+        self.user_scale, self.user_offx, self.user_offy, self.crop_left, self.crop_right = self.displayConf.configuration()
                 
 
-        self.draw_character = CharacterDraw(self.screen, self.model, self.user_offx, self.user_offy, self.user_scale, self.mirror, self.sprites)
+        self.draw_character = CharacterDraw(self.screen, self.model, self.user_offx, self.user_offy, self.user_scale, self.crop_left, self.crop_right, self.mirror, self.sprites)
         pass
         
     
@@ -77,6 +77,7 @@ class myGame:
             
             
             self.draw_character.draw_character()
+            hitbox = self.draw_character.get_head_rect()
                     
             self.spawn_timer += 1
             if self.spawn_timer >= 20:
@@ -84,11 +85,11 @@ class myGame:
                 self.spawn_timer = 0
 
             # Update and draw meteors
-            draw_meteors.update_and_draw_meteors(self.screen)
+            draw_meteors.update_and_draw_meteors(self.screen, hitbox)
 
             flask_app.processing = False
             pygame.display.flip()
-            self.clock.tick(30)
+            self.clock.tick(60)
 
         pygame.quit()
         
