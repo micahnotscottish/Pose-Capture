@@ -30,6 +30,9 @@ class CharacterDraw():
     def draw_character(self):
         
         self.get_pose()
+        # If no person/frame was available, nothing to draw
+        if self.person is None:
+            return
         # Draw sprite from left elbow to left wrist
         # YOLOv8 pose indices: left elbow = 7, left wrist = 9
         self.draw_from_to(self.sprites["left_forearm"], 7, 9)
@@ -43,16 +46,14 @@ class CharacterDraw():
         self.draw_head(self.sprites["head"])
         self.draw_torso(self.sprites["torso"])
         
-        """"
-        # Draw all keypoints as circles
-        for i in range(person.shape[0]):
-            x, y = person[i]
-            c = person_conf[i]
-            if c > 0.5:
-                draw_x = img_x + int(round(x))
-                draw_y = img_y + int(round(y))
-                pygame.draw.circle(screen, (255, 0, 0), (draw_x, draw_y), 8)
-        """
+        # Debug: draw all keypoints as circles (disabled)
+        # for i in range(self.person.shape[0]):
+        #     x, y = self.person[i]
+        #     c = self.person_conf[i]
+        #     if c > 0.5:
+        #         draw_x = self.img_x + int(round(x))
+        #         draw_y = self.img_y + int(round(y))
+        #         pygame.draw.circle(self.screen, (255, 0, 0), (draw_x, draw_y), 8)
         
     
     def get_pose(self):
@@ -109,16 +110,13 @@ class CharacterDraw():
             if len(self.smoothed_people) > num_people:
                 self.smoothed_people = self.smoothed_people[:num_people]
 
-            # Draw each detected person
+            # Process detected people (we will draw the first/primary person)
             for p in range(num_people):
                 self.person = xy[p]
                 self.person_conf = conf[p]
                 smoothed_person = self.smoothed_people[p]
 
                 # Exponential smoothing per keypoint with fallback for missing points.
-                # Keep a copy of the previous smoothed positions so we can compute
-                # the average translation of detected keypoints and apply that
-                # translation to any undetected keypoints so they move with the body.
                 prev_smoothed = smoothed_person.copy()
                 detected_idxs = []
 
@@ -138,6 +136,34 @@ class CharacterDraw():
                     for i in range(self.person.shape[0]):
                         if self.person_conf[i] < self.conf_threshold:
                             smoothed_person[i] = prev_smoothed[i] + avg_delta
+
+                # update smoothing buffer
+                self.smoothed_people[p] = smoothed_person
+
+                # Compute horizontal body center from detected keypoints (fallback to image center)
+                if len(detected_idxs) > 0:
+                    center_x = float(np.mean(smoothed_person[detected_idxs, 0]))
+                else:
+                    center_x = float(self.disp_w) / 2.0
+
+                # Map center_x (in resized image coords) to a screen percentage and compute image x
+                desired_screen_center_x = int((center_x / float(self.disp_w)) * win_w)
+                final_img_x = desired_screen_center_x - (self.disp_w // 2) + self.user_offx
+
+                # set final image pos and current person for drawing
+                self.img_x = final_img_x
+                self.img_y = (win_h - self.disp_h) // 2 + self.user_offy
+                self.person = smoothed_person
+                self.person_conf = conf[p]
+
+                # we draw only the primary person (first); break after processing
+                break
+
+            # Mark processing done so other code can continue
+            try:
+                flask_app.processing = False
+            except Exception:
+                pass
             
             
     def draw_from_to(self, sprite, p1, p2):
