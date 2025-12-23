@@ -2,28 +2,28 @@ import pygame
 import flask_app
 import cv2
 
+# This class displays and allows for the adjustment and configuration of the input camera capture.
+# Adjustments are returned so they can be carried over into the game capture.
+# Adjustments include:
+# - cropping left and right sides
+# - moving image left, right, up, and down
+# - scaling the overall image
+# call "configuration()" to run
 
 class Configuration:
     def __init__(self, screen, initial_scale=1.0, initial_offx=0, initial_offy=0):
-        """Initialize configuration UI state. Call `configuration()` to run the UI loop.
-
-        screen: pygame display surface
-        sample_bgr: unused placeholder kept for compatibility
-        initial_scale/offx/offy: initial values shown by sliders
-        """
         self.screen = screen
         self.initial_scale = initial_scale
         self.initial_offx = initial_offx
         self.initial_offy = initial_offy
-
         self.clock = pygame.time.Clock()
         self.win_w, self.win_h = self.screen.get_size()
 
-        # preview surface will be updated each loop from a live frame if available
+        # Preview image will be updated each loop from a live frame if available
         self.preview_surf = None
         self.ph = self.pw = 0
 
-        # slider state: t in 0..1 maps to scale SCALE_MIN..SCALE_MAX, offx/offy -range..range
+        # Variables for slider mappings, as well as min and max values available
         self.SCALE_MIN = 0.2
         self.SCALE_MAX = 3.0
         self.t_scale = max(0.0, min(1.0, (self.initial_scale - self.SCALE_MIN) / (self.SCALE_MAX - self.SCALE_MIN)))
@@ -31,16 +31,15 @@ class Configuration:
         self.max_offy = self.win_h // 2
         self.t_offx = (self.initial_offx + self.max_offx) / (2 * self.max_offx) if self.max_offx else 0.5
         self.t_offy = (self.initial_offy + self.max_offy) / (2 * self.max_offy) if self.max_offy else 0.5
-        # crop values as normalized 0..1 of image width
-        self.t_crop_left = 0.0     # 0 = no crop
-        self.t_crop_right = 1.0    # 1 = no crop
+        self.t_crop_left = 0.0
+        self.t_crop_right = 1.0
 
         self.dragging = None
         self.running = True
         self.font = pygame.font.SysFont(None, 28)
-
+        
+    # This is a helper function to blit the rectangles and text of a slider to the screen
     def _draw_slider(self, surface, rect, t, label):
-        # rect: (x,y,w,h), t: 0..1
         x, y, w, h = rect
         pygame.draw.rect(surface, (50, 50, 50), rect)
         inner = (x + 4, y + 4, w - 8, h - 8)
@@ -52,6 +51,7 @@ class Configuration:
         txt = font.render(f"{label}: {t:.2f}", True, (255, 255, 255))
         surface.blit(txt, (x, y - 22))
 
+    # This is a helper function to quickly retrieve all sliders
     def _get_slider_rects(self):
         s1 = (50, self.win_h - 260, self.win_w - 100, 24)  # Scale
         s2 = (50, self.win_h - 220, self.win_w - 100, 24)  # Offset X
@@ -60,12 +60,14 @@ class Configuration:
         s5 = (50, self.win_h - 100, self.win_w - 100, 24)  # Crop Right
         return s1, s2, s3, s4, s5
 
+    # This function maps the slider values to the correlated value in the range available
     def _map_t_values(self):
         scale = self.SCALE_MIN + self.t_scale * (self.SCALE_MAX - self.SCALE_MIN)
         offx = int(round(self.t_offx * 2 * self.max_offx - self.max_offx))
         offy = int(round(self.t_offy * 2 * self.max_offy - self.max_offy))
         return scale, offx, offy, self.t_crop_left, self.t_crop_right
 
+    # This function grabs a preview image of the raw camera input
     def _update_preview(self):
         live = None
         try:
@@ -77,26 +79,24 @@ class Configuration:
         if live is not None:
             try:
                 h, w = live.shape[:2]
-
+                
                 # compute crop pixels
                 left_px = int(self.t_crop_left * w)
                 right_px = int(self.t_crop_right * w)
-
+                
                 # safety clamp
                 if right_px - left_px > 10:
                     live = live[:, left_px:right_px]
-
                 preview = cv2.cvtColor(live, cv2.COLOR_BGR2RGB)
                 self.ph, self.pw = preview.shape[:2]
-                self.preview_surf = pygame.image.frombuffer(
-                    preview.tobytes(), (self.pw, self.ph), 'RGB'
-                )
+                self.preview_surf = pygame.image.frombuffer(preview.tobytes(), (self.pw, self.ph), 'RGB')
             except Exception:
                 self.preview_surf = None
 
+    # Draw ui and image preview adjusted as done by the sliders
     def _draw_preview_and_ui(self):
         self.screen.fill((30, 30, 30))
-        # preview centered (if available) and transformed live according to sliders
+        # preview centered (if available)
         if self.preview_surf is not None and self.pw > 0 and self.ph > 0:
             # map t_scale to real scale
             scale_val = self.SCALE_MIN + self.t_scale * (self.SCALE_MAX - self.SCALE_MIN)
@@ -128,8 +128,8 @@ class Configuration:
             no_txt = pygame.font.SysFont(None, 24).render('Waiting for camera...', True, (200, 200, 200))
             self.screen.blit(no_txt, (placeholder.x + 12, placeholder.y + 12))
 
+        # get all slider rectangles available and draw them
         s1, s2, s3, s4, s5 = self._get_slider_rects()
-
         self._draw_slider(self.screen, s1, self.t_scale, 'Scale')
         self._draw_slider(self.screen, s2, self.t_offx, 'Offset X')
         self._draw_slider(self.screen, s3, self.t_offy, 'Offset Y')
@@ -137,45 +137,28 @@ class Configuration:
         self._draw_slider(self.screen, s5, self.t_crop_right, 'Crop Right')
 
 
-        # --- Calibration Guide Box ---
+        # draw calibration guide
         rect_w, rect_h = 100, 175
         rect_x = (self.screen.get_width() - rect_w) // 2
         rect_y = (self.screen.get_height() - rect_h) // 2 + 150
-
-        # Draw red rectangle (outline)
-        pygame.draw.rect(
-            self.screen,
-            (255, 0, 0),
-            (rect_x, rect_y, rect_w, rect_h),
-            4  # border thickness
-        )
-
-        # Instruction text
+        pygame.draw.rect(self.screen, (255, 0, 0), (rect_x, rect_y, rect_w, rect_h), 4)
         font = pygame.font.SysFont(None, 32)
         text = "Adjust settings until body fits within this region"
+        txt_surf = font.render(text, True, (255, 255, 255))
+        txt_rect = txt_surf.get_rect(
+        center=(self.screen.get_width() // 2, rect_y + rect_h + 20))
+        self.screen.blit(txt_surf, txt_rect)
 
-        # Render multiline text
-        lines = text.split("\n")
-        for i, line in enumerate(lines):
-            txt_surf = font.render(line, True, (255, 255, 255))
-            txt_rect = txt_surf.get_rect(
-                center=(self.screen.get_width() // 2, rect_y + rect_h + 20 + i * 30)
-            )
-            self.screen.blit(txt_surf, txt_rect)
-
-
-        
-        
-        # Configure button
-        cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
-        pygame.draw.rect(self.screen, (70, 140, 70), cfg_rect)
+        # draw configure button
+        self.cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
+        pygame.draw.rect(self.screen, (70, 140, 70), self.cfg_rect)
         txt = self.font.render('Configure', True, (255, 255, 255))
-        txt_rect = txt.get_rect(center=cfg_rect.center)
+        txt_rect = txt.get_rect(center=self.cfg_rect.center)
         self.screen.blit(txt, txt_rect)
 
-        return cfg_rect
 
-    def _handle_event(self, ev, cfg_rect):
+    # handle dragging of sliders
+    def _handle_event(self, ev):
         if ev.type == pygame.QUIT:
             return 'quit'
         elif ev.type == pygame.MOUSEBUTTONDOWN:
@@ -192,7 +175,7 @@ class Configuration:
             elif pygame.Rect(*s5).collidepoint(mx, my):
                 self.dragging = ('crop_right', s5)
             else:
-                if cfg_rect.collidepoint(mx, my):
+                if self.cfg_rect.collidepoint(mx, my):
                     return 'configure'
         elif ev.type == pygame.MOUSEBUTTONUP:
             self.dragging = None
@@ -215,22 +198,19 @@ class Configuration:
 
         return None
 
-    def configuration(self):
-        """Run the configuration UI loop. Returns (scale, offx, offy)."""
-        while True:
-            cfg_rect = pygame.Rect(self.win_w // 2 - 80, self.win_h - 70, 160, 40)
 
+    # main function - calls event handling, updating, and drawing
+    def configuration(self):
+        while True:
             for ev in pygame.event.get():
-                res = self._handle_event(ev, cfg_rect)
+                res = self._handle_event(ev)
                 if res == 'quit':
                     return self.initial_scale, self.initial_offx, self.initial_offy, self.t_crop_left, self.t_crop_right
                 if res == 'configure':
                     return self._map_t_values()
 
-            # update preview from latest live frame if available
             self._update_preview()
-
-            # draw UI and get button rect
+            
             self._draw_preview_and_ui()
 
             pygame.display.flip()
