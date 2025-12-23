@@ -3,7 +3,7 @@ from config import YOLO_MODEL_PATH
 import pygame
 from game.cam_configuration import Configuration
 from game.draw_character import CharacterDraw
-from game.draw_meteors import MeteorGame
+from game.meteor_game import MeteorGame
 
 # This is the main class that controls the motion capture game.
 # From here, the main game loop calls the camera configuration,
