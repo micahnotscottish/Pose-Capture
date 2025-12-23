@@ -7,6 +7,7 @@ import numpy as np
 from game import draw_character, draw_meteors, cam_configuration
 from game.cam_configuration import Configuration
 from game.draw_character import CharacterDraw
+from game.draw_meteors import MeteorGame
 
 class myGame:
     
@@ -54,7 +55,8 @@ class myGame:
                 
 
         self.draw_character = CharacterDraw(self.screen, self.model, self.user_offx, self.user_offy, self.user_scale, self.crop_left, self.crop_right, self.mirror, self.sprites)
-        pass
+        
+        self.game = MeteorGame()
         
     
     def run_pygame_loop(self):
@@ -81,11 +83,11 @@ class myGame:
                     
             self.spawn_timer += 1
             if self.spawn_timer >= 40:
-                draw_meteors.spawn_meteor(self.screen.get_width())
+                self.game.spawn_meteor(self.screen.get_width())
                 self.spawn_timer = 0
 
             # Update and draw meteors
-            draw_meteors.update_and_draw_meteors(self.screen, hitbox)
+            self.game.update_and_draw_meteors(self.screen, hitbox)
 
             flask_app.processing = False
             pygame.display.flip()
