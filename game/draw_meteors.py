@@ -14,27 +14,49 @@ class MeteorGame:
         # Global score
         self.score = 0
         
+        self.m1sprite = pygame.image.load("sprites/meteor1.png").convert_alpha()
+        self.m2sprite = pygame.image.load("sprites/meteor2.png").convert_alpha()
+        self.egg = pygame.image.load("sprites/egg.png").convert_alpha()
+        
+        self.meteor_scale_range = (0.2, .5)   # 👈 adjust size range here
+        self.flicker_interval = 120            # ms between sprite swaps
 
 
     def spawn_meteor(self, screen_width):
-        """
-        Spawn a meteor at a random horizontal position.
-        Types: 'good' (green) or 'bad' (red)
-        """
-        x = random.randint(0, screen_width - 30)
-        y = -30
+        x = random.randint(0, screen_width - 60)
+        y = -150
         speed = random.randint(3, 7)
-        size = random.randint(20, 50)
-        meteor_type = random.choice(['good', 'bad'])
-        color = (0, 200, 0) if meteor_type == 'good' else (200, 0, 0)
+
+        scale = random.uniform(*self.meteor_scale_range)
+        meteor_type = random.choice(["good", "bad"])
+
+        if meteor_type == "good":
+            base_sprite = self.egg
+            alt_sprite = None
+        else:
+            base_sprite = self.m1sprite
+            alt_sprite = self.m2sprite
+
+        sprite = pygame.transform.scale_by(base_sprite, scale)
+
         self.meteors.append({
             "x": x,
             "y": y,
             "speed": speed,
-            "size": size,
             "type": meteor_type,
-            "color": color
+
+            # sprite handling
+            "sprite": sprite,
+            "base_sprite": base_sprite,
+            "alt_sprite": alt_sprite,
+            "scale": scale,
+            "use_alt": False,
+            "last_flicker": pygame.time.get_ticks(),
+
+            # collision size
+            "radius": sprite.get_width() // 2
         })
+
 
     def rect_circle_collision(self, rect, cx, cy, radius):
         """
@@ -57,24 +79,42 @@ class MeteorGame:
 
         for meteor in self.meteors[:]:
             meteor["y"] += meteor["speed"]
-            pygame.draw.circle(screen, meteor["color"], (meteor["x"], meteor["y"]), meteor["size"])
+
+            # --- Flicker between meteor1 & meteor2 ---
+            if meteor["alt_sprite"]:
+                now = pygame.time.get_ticks()
+                if now - meteor["last_flicker"] > self.flicker_interval:
+                    meteor["use_alt"] = not meteor["use_alt"]
+                    sprite_source = meteor["alt_sprite"] if meteor["use_alt"] else meteor["base_sprite"]
+                    meteor["sprite"] = pygame.transform.scale_by(sprite_source, meteor["scale"])
+                    meteor["last_flicker"] = now
+
+            screen.blit(meteor["sprite"], (meteor["x"], meteor["y"]))
 
             if player_rect:
-                if self.rect_circle_collision(player_rect, meteor["x"], meteor["y"], meteor["size"]):
+                cx = meteor["x"] + meteor["radius"]
+                cy = meteor["y"] + meteor["radius"]
+
+                if self.rect_circle_collision(player_rect, cx, cy, meteor["radius"]):
                     if meteor["type"] == "good":
                         self.score += 1
                         self.meteors.remove(meteor)
                     else:
-                        # Bad meteor hit → show points and quit
                         txt = score_font.render(f"Final Score: {self.score}", True, (255, 255, 255))
-                        screen.blit(txt, (screen.get_width() // 2 - 80, screen.get_height() // 2 - 20))
+                        screen.blit(txt, (screen.get_width() // 2 - 100, screen.get_height() // 2))
                         pygame.display.flip()
                         pygame.time.delay(2000)
                         pygame.quit()
                         sys.exit()
 
+
         # Remove meteors off-screen
-        self.meteors[:] = [m for m in self.meteors if m["y"] - m["size"] < screen.get_height()]
+        self.meteors[:] = [
+        m for m in self.meteors
+        if m["y"] - m["radius"] < screen.get_height()
+]
+
+
 
         # Draw current score
         score_txt = score_font.render(f"Score: {self.score}", True, (0, 0, 0), (255,0,0))
