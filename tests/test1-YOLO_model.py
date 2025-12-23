@@ -11,7 +11,7 @@ while True:
         break
 
     results = model(frame)
-    annotated_frame = results[0].plot()  # draws skeleton
+    annotated_frame = results[0].plot()
 
     cv2.imshow("YOLO Pose Tracking", annotated_frame)
     if cv2.waitKey(1) & 0xFF == ord('q'):

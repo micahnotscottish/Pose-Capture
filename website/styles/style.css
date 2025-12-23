@@ -1,2 +1,3 @@
 body { background: #111; color: white; text-align: center; }
 video { width: auto; border: 2px solid white; transform: scaleX(-1); height: 70vh; }
+button { height: auto; width: 30vw; font-size: 3em;}

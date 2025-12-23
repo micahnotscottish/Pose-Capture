@@ -4,6 +4,16 @@ import qrcode
 from config import CLOUDFLARED_PATH, FLASK_PORT
 
 
+# this function starts the cloudflare tunnel using the domain name that I purchased
+# originally I would open a temporary tunnel, which would give a randomly generated url,
+# which I would generate a qr code from that the user would scan to join the game.
+# It was pretty awesome.
+# But unless you pay big moneys cloud flare limits the amount of tunnels you can open
+# in quick succession under the same ip address, and with the amount of testing I was doing
+# I would continually hit this limit.
+# So alas, while the generated url and qrcode scanning was very epic, at least for this test version
+# it uses a static cloudflare tunnel to my domain
+
 def start_cloudflared():
     print("Starting Cloudflare Tunnel...")
 
@@ -14,6 +24,8 @@ def start_cloudflared():
         text=True
     )
 
+
+    # cool url regex getting and qr coode generation that i can't use :(
     """"
     url_pattern = re.compile(r"https://[a-z0-9\-]+\.trycloudflare\.com")
 

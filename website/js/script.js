@@ -1,18 +1,19 @@
+
 document.addEventListener("DOMContentLoaded", () => {
-
-  const PASSWORD = "letmein"; // <-- change this
-
+  
+  // simple password to deter general interference
+  const PASSWORD = "letmein";
   const entered = prompt("Enter password to continue:");
   if (entered !== PASSWORD) {
     alert("Incorrect password.");
-    return; // ⛔ stop everything
+    return;
   }
 
   const video = document.getElementById("video");
   const switchBtn = document.getElementById("switchCam");
 
   let stream = null;
-  let facingMode = "environment";
+  let facingMode = "user";
 
   const canvas = document.createElement("canvas");
   const ctx = canvas.getContext("2d");

@@ -4,15 +4,19 @@ import cv2
 
 app = Flask(__name__, template_folder="website", static_folder="website")
 
+# these are locks that will be used to prevent overwriting
+# of frames while being uploaded/processed
 latest_frame = None
 processing = False
 
 
+# render website
 @app.route("/")
 def index():
     return render_template("index.html")
 
 
+# use post to send frame to game
 @app.route("/upload", methods=["POST"])
 def upload():
     global latest_frame, processing

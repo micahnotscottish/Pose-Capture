@@ -8,11 +8,11 @@ import sys
 import re
 import qrcode
 
-# ---- Config ----
+
 CLOUDFLARED_PATH = "C:\\Program Files (x86)\\cloudflared\\cloudflared.exe"
 FLASK_PORT = 8080
 
-# ---- Flask app ----
+
 app = Flask(__name__)
 model = YOLO("yolo11n-pose.pt")
 latest_frame = None
@@ -34,7 +34,6 @@ def upload():
         latest_frame = frame
     return "OK"
 
-# ---- YOLO loop (main thread) ----
 def yolo_loop():
     global latest_frame, processing
     print("Starting YOLO loop. Press 'q' in the window to exit.")
@@ -58,7 +57,7 @@ def yolo_loop():
     cv2.destroyAllWindows()
     sys.exit(0)
 
-# ---- Start Cloudflare Tunnel ----
+
 def start_cloudflared():
     print("Starting Cloudflare Tunnel...")
     proc = subprocess.Popen(
@@ -80,7 +79,7 @@ def start_cloudflared():
 
     print(f"Public URL: {public_url}")
 
-    # Generate QR code (ASCII + PNG)
+
     qr = qrcode.QRCode()
     qr.add_data(public_url)
     qr.make(fit=True)
@@ -91,7 +90,6 @@ def start_cloudflared():
 
     return proc, public_url
 
-# ---- Main ----
 if __name__ == "__main__":
     # Start Flask in a daemon thread
     threading.Thread(target=lambda: app.run(host="0.0.0.0", port=FLASK_PORT, threaded=True), daemon=True).start()
