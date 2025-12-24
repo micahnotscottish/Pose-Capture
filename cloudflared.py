@@ -25,7 +25,7 @@ def start_cloudflared():
     )
 
 
-    # cool url regex getting and qr coode generation that i can't use :(
+    # cool url regex getting and qr code generation that i can't use :(
     """"
     url_pattern = re.compile(r"https://[a-z0-9\-]+\.trycloudflare\.com")
 

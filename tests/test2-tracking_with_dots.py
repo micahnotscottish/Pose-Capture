@@ -33,16 +33,16 @@ while running:
     if not success:
         continue
 
-    # Run pose detection
+    # run pose detection
     results = model(frame, verbose=False)
 
-    # Convert OpenCV frame (BGR) -> RGB
+    # convert frame
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-    # Convert to Pygame surface
+    # convert to Pygame surface
     frame_surface = pygame.surfarray.make_surface(np.rot90(frame_rgb))
 
-    # Draw camera feed
+    # draw camera feed
     screen.blit(frame_surface, (0, 0))
 
     # draw keypoints
