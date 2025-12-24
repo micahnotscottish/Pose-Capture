@@ -6,7 +6,7 @@
 
 ## ✨ Overview
 
-This is a personal project I designed inspired by real-world use. My girlfriend works at an intermediate unit with developmentally disabled children, many of whom are non-verbal, but love dancing and moving to music and animals on TV. One child in particular loves pretending to be a dinosaur — so I thought, **why not let him actually be one?**
+This is a personal project I designed inspired by real-world use. My girlfriend works at an intermediate unit with developmentally disabled children, many of whom are non-verbal, but love dancing and moving to music and animals on TV. One child in particular loves pretending to be a dinosaur. So I thought, **why not let him actually be one?**
 
 The goal of this project wasn’t to build a single polished game, but to design a **flexible, low-cost motion capture architecture** that can:
 
@@ -31,10 +31,10 @@ Unlike Unreal Engine or Unity solutions, this system is intentionally lightweigh
 ## 🧱 Tech Stack
 
 * **Ultralytics YOLO v11n** – Pose tracking
-* **Flask** – Web server & frame uploads
-* **OpenCV** – Frame processing
-* **Cloudflare Tunnel** – HTTPS remote camera access (`mcappy.org`)
-* **Pygame** – Rendering & game logic
+* **Flask** - Web server & frame uploads
+* **OpenCV** - Frame processing
+* **Cloudflare Tunnel** - HTTPS remote camera access (`mcappy.org`)
+* **Pygame** - Rendering & game logic
 
 ---
 
