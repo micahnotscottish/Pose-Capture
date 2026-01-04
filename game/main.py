@@ -21,6 +21,7 @@ class myGame:
         self.screen = pygame.display.set_mode((self.win_w, self.win_h), pygame.RESIZABLE)
         pygame.display.set_caption("Motion Capture Dinosuar Game")
         self.clock = pygame.time.Clock()
+        self.font = pygame.font.SysFont(None, 36)
 
         # preload all character sprites
         # this dicionary can easily be changed to any sprites wanted
@@ -58,31 +59,64 @@ class myGame:
     
     def run_pygame_loop(self):
         running = True
-        while running:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running = False
+        runapp = True
+        waiting_for_input = True
+        while runapp:
+            while running:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
 
-            self.screen.fill((0, 255, 0))
-            self.screen.blit(self.background_image, (0, 0))
+                self.screen.fill((0, 255, 0))
+                self.screen.blit(self.background_image, (0, 0))
+                
+                # draw character and get hitbox wanted for this game
+                self.draw_character.draw_character()
+                hitbox = self.draw_character.get_head_rect()
+                        
+                # this particular game can spawn meteors,
+                # so setup a time to spawn them
+                self.spawn_timer += 1
+                if self.spawn_timer >= 40:
+                    self.game.spawn_meteor(self.screen.get_width())
+                    self.spawn_timer = 0
+
+                # this particular game requires updating and drawing meteors every frame
+                running = self.game.update_and_draw_meteors(self.screen, hitbox)
+
+                pygame.display.flip()
+                self.clock.tick(60)
             
-            # draw character and get hitbox wanted for this game
-            self.draw_character.draw_character()
-            hitbox = self.draw_character.get_head_rect()
-                    
-            # this particular game can spawn meteors,
-            # so setup a time to spawn them
-            self.spawn_timer += 1
-            if self.spawn_timer >= 40:
-                self.game.spawn_meteor(self.screen.get_width())
-                self.spawn_timer = 0
+            waiting_for_input = True
+            while waiting_for_input:
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        runapp = False
+                        waiting_for_input = False
 
-            # this particular game requires updating and drawing meteors every frame
-            self.game.update_and_draw_meteors(self.screen, hitbox)
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_q:
+                            runapp = False
+                            waiting_for_input = False
 
-            pygame.display.flip()
-            self.clock.tick(60)
+                        if event.key == pygame.K_r:
+                            runapp = True
+                            running = True
+                            waiting_for_input = False
+                            self.game = MeteorGame()
+
+                self.screen.fill((0, 0, 0))
+                self.draw_exit_restart(self.screen)
+                pygame.display.flip()
         pygame.quit()
+        
+        
+    def draw_exit_restart(self, screen):
+        exit_text = self.font.render("Press Q to Exit", True, (255, 255, 255))
+        restart_text = self.font.render("Press R to Restart", True, (255, 255, 255))
+
+        screen.blit(exit_text, (40, 40))
+        screen.blit(restart_text, (40, 80))
         
 
 

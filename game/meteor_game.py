@@ -19,6 +19,7 @@ class MeteorGame:
     
         self.meteor_scale_range = (0.2, .5)
         self.flicker_interval = 120
+        
 
 
     # spawn a meteor with slight randomization based on parameters
@@ -101,9 +102,8 @@ class MeteorGame:
                         screen.blit(txt, (screen.get_width() // 2 - 100, screen.get_height() // 2))
                         pygame.display.flip()
                         pygame.time.delay(2000)
-                        pygame.quit()
-                        sys.exit()
-
+                        return False
+            
 
         # remove meteors if they're no longer on screen
         new_meteors = []
@@ -116,3 +116,4 @@ class MeteorGame:
         # Draw current score
         score_txt = score_font.render(f"Score: {self.score}", True, (0, 0, 0), (255,0,0))
         screen.blit(score_txt, (10, 10))
+        return True
